@@ -1,0 +1,12 @@
+# Ignore Python virtual environment
+.venv/
+# Python cache
+__pycache__/
+*.pyc
+
+# Local backup data
+main.jsonl
+files/
+
+# Generated outputs
+messages.html
