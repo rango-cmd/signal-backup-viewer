@@ -1,17 +1,15 @@
-# src/renderer.py
+import os
 import time
 
 def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_real_name, disk_cache, tz_suffix):
-    print("🎨 正在生成完美複製 Telegram 官方雙欄嵌套網頁結構...")
-    
     html_start = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Telegram Data Export - Signal</title>
+    <title>Telegram Data Export</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body {{ background: #fdfdfd; color: #000000; font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif; font-size: 14px; margin: 0; padding: 0; }}
+        body {{ background: #fdfdfd; color: #000000; font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif; font-size: 14px; margin: 0; padding: 0; }}
         .page_wrap {{ display: flex; width: 100vw; height: 100vh; overflow: hidden; }}
         .sidebar {{ width: 360px; background: #ffffff; border-right: 1px solid #e6e6e6; display: flex; flex-direction: column; flex-shrink: 0; }}
         .sidebar-nav {{ display: flex; background: #f8fafc; border-bottom: 1px solid #e6e6e6; }}
@@ -70,14 +68,8 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
     contact_pane_html = '</div><div id="contact-list-pane" class="list-container">'
     content_area = '</div></div><div class="main">'
     
-    # 排序邏輯：優先處理置頂，再處理訊息量
-    def sort_logic(chat_item_tuple):
-        cid = chat_item_tuple[0]
-        messages = chat_item_tuple[1]
-        meta = chat_meta.get(cid, {'pinnedOrder': float('inf')})
-        return (meta['pinnedOrder'], -len(messages))
-
-    sorted_chats = sorted(chats.items(), key=sort_logic)
+    sorted_chats = sorted(chats.items(), key=lambda x: (chat_meta.get(x[0], {'pinnedOrder': float('inf')})['pinnedOrder'], -len(x[1])))
+    ext_map = {'image/jpeg': '.jpeg', 'image/jpg': '.jpg', 'image/png': '.png', 'video/mp4': '.mp4', 'text/plain': '.txt'}
 
     for chat_id, messages in sorted_chats:
         if not messages: continue
@@ -94,11 +86,9 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
         room = recipients.get(target_recipient_id, {'name': f'Chat #{chat_id}', 'is_group': False, 'color': '#5288c1', 'initial': 'C'})
         
         meta = chat_meta.get(chat_id, {'pinnedOrder': float('inf'), 'expirationTimerMs': None})
-        is_pinned = meta['pinnedOrder'] != float('inf')
         expiration_tag = f'<span class="tag-timer">{meta["expirationTimerMs"]}</span>' if meta['expirationTimerMs'] else ''
-        pinned_badge = '<span class="tag-pinned">pinned</span>' if is_pinned else ''
+        pinned_badge = '<span class="tag-pinned">pinned</span>' if meta['pinnedOrder'] != float('inf') else ''
 
-        # 渲染 Chats
         html_start += f"""
         <div class="chat-item" id="menu-{chat_id}" onclick="showChat('{chat_id}')">
             <div class="userpic" style="background: {room['color']}">{room['initial']}</div>
@@ -112,29 +102,21 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
         </div>
         """
         
-        # 渲染 Contacts
         if not room.get('is_group'):
             contact_pane_html += f"""
             <div class="chat-item" id="contact-menu-{chat_id}" onclick="switchTab('chat-list-pane', document.querySelector('.nav-tab')); showChat('{chat_id}')">
                 <div class="userpic" style="background: {room['color']}">{room['initial']}</div>
-                <div class="chat-info">
-                    <div class="name-row">
-                        <div class="name">{room['name']}</div>
-                    </div>
-                    <div class="preview">點擊開啟對話串</div>
-                </div>
+                <div class="chat-info"><div class="name-row"><div class="name">{room['name']}</div></div><div class="preview">Open chat history</div></div>
             </div>
             """
 
-        # 右側對話流主體
         content_area += f"""
         <div class="chat-window" id="chat-{chat_id}">
             <div class="page_header">
                 <div class="userpic" style="width:34px; height:34px; font-size:13px; background: {room['color']}; margin-right: 12px;">{room['initial']}</div>
                 <div class="name"><strong>{room['name']}</strong> {expiration_tag}</div>
             </div>
-            <div class="messages-area">
-                <div class="history">
+            <div class="messages-area"><div class="history">
         """
         
         for item in messages:
@@ -144,18 +126,14 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
             if 'standardMessage' in item:
                 msg = item['standardMessage']
                 body = msg.get('text', {}).get('body', '').replace("￼", "")
+                is_inc = 'incoming' in item
                 
-                is_incoming = 'incoming' in item
-                side_class = "received" if is_incoming else "sent"
+                author = recipients.get(item.get('authorId'), {'name': f'User {item.get("authorId")}', 'color': '#3a6d99', 'initial': 'U'})
+                display_name = author['name'] if is_inc else self_real_name
+                display_color = author['color'] if is_inc else "#43a047"
                 
-                sender_id = item.get('authorId')
-                author = recipients.get(sender_id, {'name': f'User {sender_id}', 'color': '#3a6d99', 'initial': 'U'})
-                
-                display_name = author['name'] if is_incoming else self_real_name
-                display_color = author['color'] if is_incoming else "#43a047"
-                
-                content_area += f'<div class="message_row {side_class}">'
-                if is_incoming:
+                content_area += f'<div class="message_row {"received" if is_inc else "sent"}">'
+                if is_inc:
                     content_area += f'<div class="userpic" style="width:34px; height:34px; font-size:12px; background: {author["color"]}">{author["initial"]}</div>'
                 
                 content_area += f"""<div class="message_box">
@@ -165,23 +143,20 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
                 if 'attachments' in msg:
                     for att in msg['attachments']:
                         info = att.get('pointer', {})
-                        json_size = info.get('locatorInfo', {}).get('size') if info.get('locatorInfo') else None
+                        j_size = info.get('locatorInfo', {}).get('size') if info.get('locatorInfo') else None
+                        j_ext = ext_map.get(info.get('contentType', '')) or os.path.splitext(info.get('fileName', ''))[1].lower()
                         
-                        if json_size and json_size in disk_cache:
-                            real_path = disk_cache[json_size]
+                        if j_size and j_ext and (j_size, j_ext) in disk_cache:
+                            real_path = disk_cache[(j_size, j_ext)]
                             content_area += f'<div class="img-container"><a href="{real_path}" target="_blank"><img class="img-attach" src="{real_path}"></a></div>'
                         else:
-                            content_area += f'<div style="color:#707579; font-size:12px; font-style:italic;">[Media File: {info.get("fileName", "Photo")}]</div>'
+                            content_area += f'<div style="color:#707579; font-size:12px; font-style:italic;">[Media: {info.get("fileName", "Photo")}]</div>'
                 
                 if body: content_area += f'<div>{body}</div>'
                 content_area += f'<span class="date_stamp">{time_str}</span></div><div class="clear"></div></div></div>'
             
             elif 'updateMessage' in item:
-                content_area += f"""
-                <div class="service">
-                    <div class="service_message">System Notification Update | {time_str}</div>
-                </div>
-                """
+                content_area += f'<div class="service"><div class="service_message">System Notification Update | {time_str}</div></div>'
         content_area += '</div></div></div>'
 
     js_script = """
@@ -193,21 +168,11 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
         }
         function showChat(id) {
             document.querySelectorAll('.chat-window, .chat-item').forEach(el => el.classList.remove('active'));
-            const targetChat = document.getElementById('chat-' + id);
-            const targetMenu = document.getElementById('menu-' + id);
-            const targetContactMenu = document.getElementById('contact-menu-' + id);
-            if(targetChat) targetChat.classList.add('active');
-            if(targetMenu) targetMenu.classList.add('active');
-            if(targetContactMenu) targetContactMenu.classList.add('active');
-            if(targetChat) {
-                const msgArea = targetChat.querySelector('.messages-area');
-                if(msgArea) msgArea.scrollTop = msgArea.scrollHeight;
-            }
+            const tc = document.getElementById('chat-' + id), tm = document.getElementById('menu-' + id), tcm = document.getElementById('contact-menu-' + id);
+            if(tc) tc.classList.add('active'); if(tm) tm.classList.add('active'); if(tcm) tcm.classList.add('active');
+            if(tc) { const ma = tc.querySelector('.messages-area'); if(ma) ma.scrollTop = ma.scrollHeight; }
         }
-        window.onload = function() {
-            const first = document.querySelector('#chat-list-pane .chat-item');
-            if(first) first.click();
-        }
+        window.onload = function() {{ const first = document.querySelector('#chat-list-pane .chat-item'); if(first) first.click(); }}
     </script>
     """
     return html_start + contact_pane_html + content_area + js_script + "</div></body></html>"
