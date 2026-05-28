@@ -51,6 +51,8 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
         .clear {{ clear: both; }}
         .img-container {{ margin: 5px 0; border-radius: 6px; overflow: hidden; display: block; }}
         .img-attach {{ max-width: 100%; max-height: 340px; border-radius: 6px; display: block; }}
+        .file-attach {{ display: inline-flex; align-items: center; background: #f0f4f8; padding: 8px 12px; border-radius: 6px; text-decoration: none; color: #2b6cb0; font-weight: bold; font-size: 13px; margin: 4px 0; border: 1px solid #e2e8f0; }}
+        .file-attach:hover {{ background: #e2e8f0; }}
         .service {{ text-align: center; margin: 12px 0; width: 100%; }}
         .service_message {{ background: rgba(214, 227, 235, 0.8); color: #4a5768; padding: 4px 14px; border-radius: 12px; font-size: 12px; display: inline-block; }}
     </style>
@@ -69,18 +71,18 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
     content_area = '</div></div><div class="main">'
     
     sorted_chats = sorted(chats.items(), key=lambda x: (chat_meta.get(x[0], {'pinnedOrder': float('inf')})['pinnedOrder'], -len(x[1])))
-    ext_map = {'image/jpeg': '.jpeg', 'image/jpg': '.jpg', 'image/png': '.png', 'video/mp4': '.mp4', 'text/plain': '.txt'}
+    media_exts = {'.jpeg', '.jpg', '.png', '.mp4', '.webp', '.gif'}
 
     for chat_id, messages in sorted_chats:
         if not messages: continue
         
         last_item = messages[-1]
-        last_msg_text = "Photo"
+        last_msg_text = "File"
         if 'standardMessage' in last_item:
-            last_msg_text = last_item['standardMessage'].get('text', {}).get('body', 'Photo')
+            last_msg_text = last_item['standardMessage'].get('text', {}).get('body', 'File')
         elif 'updateMessage' in last_item:
             last_msg_text = "Service message"
-        last_msg_text = last_msg_text.replace("￼", "Photo")
+        last_msg_text = last_msg_text.replace("￼", "File")
 
         target_recipient_id = chat_to_recipient.get(chat_id)
         room = recipients.get(target_recipient_id, {'name': f'Chat #{chat_id}', 'is_group': False, 'color': '#5288c1', 'initial': 'C'})
@@ -144,14 +146,21 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
                     for att in msg['attachments']:
                         info = att.get('pointer', {})
                         j_size = info.get('locatorInfo', {}).get('size') if info.get('locatorInfo') else None
-                        j_ext = ext_map.get(info.get('contentType', '')) or os.path.splitext(info.get('fileName', ''))[1].lower()
+                        
+                        raw_filename = info.get('fileName') or "Attachment"
+                        j_ext = os.path.splitext(raw_filename)[1].lower()
                         
                         composite_key = (j_size, j_ext)
                         if j_size and j_ext and composite_key in disk_cache:
                             img_src = disk_cache[composite_key]
-                            content_area += f'<div class="img-container"><a href="{img_src}" target="_blank"><img class="img-attach" src="{img_src}"></a></div>'
+                            
+                            # 🚀 精確判斷：多媒體檔案直接進行內嵌網頁渲染，其餘檔案還原真實檔名並提供下載
+                            if j_ext in media_exts:
+                                content_area += f'<div class="img-container"><a href="{img_src}" target="_blank"><img class="img-attach" src="{img_src}"></a></div>'
+                            else:
+                                content_area += f'<div><a class="file-attach" href="{img_src}" target="_blank">📄 {raw_filename}</a></div>'
                         else:
-                            content_area += f'<div style="color:#707579; font-size:12px; font-style:italic;">[Media: {info.get("fileName", "Photo")}]</div>'
+                            content_area += f'<div style="color:#707579; font-size:12px; font-style:italic;">[Missing: {raw_filename}]</div>'
                 
                 if body: content_area += f'<div>{body}</div>'
                 content_area += f'<span class="date_stamp">{time_str}</span></div><div class="clear"></div></div></div>'
