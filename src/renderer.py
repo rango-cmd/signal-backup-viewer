@@ -1,5 +1,5 @@
 import os
-import time
+import zipfile
 
 def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_real_name, disk_cache, tz_suffix):
     html_start = f"""<!DOCTYPE html>
@@ -21,7 +21,7 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
         .chat-item:hover {{ background: #f4f4f5; }}
         .chat-item.active {{ background: #419fd9; }}
         .chat-item.active .name, .chat-item.active .preview, .chat-item.active .meta-badge {{ color: #ffffff !important; }}
-        .chat-item.active .tag-pinned {{ background: rgba(255,255,255,0.3); color: #fff; }}
+        .chat-item.active .tag-pinned {{ background: rgba(255,255,255,0.2); color: #fff; }}
         .userpic {{ width: 44px; height: 44px; border-radius: 50%; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 14px; flex-shrink: 0; font-size: 16px; }}
         .chat-info {{ overflow: hidden; flex: 1; }}
         .name-row {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }}
@@ -71,6 +71,9 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
     sorted_chats = sorted(chats.items(), key=lambda x: (chat_meta.get(x[0], {'pinnedOrder': float('inf')})['pinnedOrder'], -len(x[1])))
     ext_map = {'image/jpeg': '.jpeg', 'image/jpg': '.jpg', 'image/png': '.png', 'video/mp4': '.mp4', 'text/plain': '.txt'}
 
+    # 取得原始壓縮檔路徑來執行隨選解壓
+    zip_path = args_file_placeholder = list(disk_cache.values())[0]['zip_internal_path'] if disk_cache else ""
+    
     for chat_id, messages in sorted_chats:
         if not messages: continue
         
@@ -146,9 +149,24 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
                         j_size = info.get('locatorInfo', {}).get('size') if info.get('locatorInfo') else None
                         j_ext = ext_map.get(info.get('contentType', '')) or os.path.splitext(info.get('fileName', ''))[1].lower()
                         
-                        if j_size and j_ext and (j_size, j_ext) in disk_cache:
-                            real_path = disk_cache[(j_size, j_ext)]
-                            content_area += f'<div class="img-container"><a href="{real_path}" target="_blank"><img class="img-attach" src="{real_path}"></a></div>'
+                        composite_key = (j_size, j_ext)
+                        if j_size and j_ext and composite_key in disk_cache:
+                            meta_info = disk_cache[composite_key]
+                            internal_src = meta_info['zip_internal_path']
+                            out_dir = meta_info['target_dir']
+                            
+                            # 隨選即時解壓：僅將正確配對到的檔案寫入輸出資料夾中
+                            full_out_path = os.path.join(out_dir, internal_src)
+                            if not os.path.exists(full_out_path):
+                                os.makedirs(os.path.dirname(full_out_path), exist_ok=True)
+                                # 追溯最外層的真正 ZIP 檔案位置解壓
+                                import sys
+                                main_zip_file = sys.argv[sys.argv.index('-f') + 1]
+                                with zipfile.ZipFile(main_zip_file, 'r') as rn_z:
+                                    with rn_z.open(internal_src) as source_bytes, open(full_out_path, 'wb') as target_bytes:
+                                        target_bytes.write(source_bytes.read())
+                            
+                            content_area += f'<div class="img-container"><a href="{internal_src}" target="_blank"><img class="img-attach" src="{internal_src}"></a></div>'
                         else:
                             content_area += f'<div style="color:#707579; font-size:12px; font-style:italic;">[Media: {info.get("fileName", "Photo")}]</div>'
                 
@@ -172,7 +190,7 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
             if(tc) tc.classList.add('active'); if(tm) tm.classList.add('active'); if(tcm) tcm.classList.add('active');
             if(tc) { const ma = tc.querySelector('.messages-area'); if(ma) ma.scrollTop = ma.scrollHeight; }
         }
-        window.onload = function() {{ const first = document.querySelector('#chat-list-pane .chat-item'); if(first) first.click(); }}
+        window.onload = function() { const first = document.querySelector('#chat-list-pane .chat-item'); if(first) first.click(); }
     </script>
     """
     return html_start + contact_pane_html + content_area + js_script + "</div></body></html>"

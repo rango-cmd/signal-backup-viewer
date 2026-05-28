@@ -1,23 +1,20 @@
-# src/cache.py
 import os
+import zipfile
 
-def build_disk_file_cache(base_dir):
-
+def build_zip_file_cache(zip_path, target_dir):
     file_cache = {}
-
-    for root, dirs, files in os.walk(base_dir):
-        for f in files:
-            full_path = os.path.join(root, f)
+    with zipfile.ZipFile(zip_path, 'r') as z:
+        for info in z.infolist():
+            if info.is_dir():
+                continue
             
-            # 取得檔案大小
-            f_size = os.path.getsize(full_path)
-            
-            # 取得副檔名並強制轉為小寫
-            _, f_ext = os.path.splitext(f)
+            f_size = info.file_size
+            _, f_ext = os.path.splitext(info.filename)
             f_ext = f_ext.lower()
-                
-            # 使用 (大小, 副檔名) 作為複合鍵
-            composite_key = (f_size, f_ext)
-            file_cache[composite_key] = full_path
             
+            # 建立記憶體映射，Value 改為儲存該檔案在 ZIP 內的原始路徑與輸出目標
+            file_cache[(f_size, f_ext)] = {
+                'zip_internal_path': info.filename,
+                'target_dir': target_dir
+            }
     return file_cache

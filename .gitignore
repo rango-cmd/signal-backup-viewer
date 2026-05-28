@@ -1,0 +1,16 @@
+# Ignore Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Local backup data
+test/
+
+# Generated outputs
+output_directory/
+
+# MacOS system files
+.DS_Store
