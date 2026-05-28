@@ -4,13 +4,12 @@
 # Python cache
 __pycache__/
 *.pyc
-*.pyo
 
 # Local backup data
-test/
+input/
 
 # Generated outputs
-output_directory/
+output/
 
 # MacOS system files
 .DS_Store

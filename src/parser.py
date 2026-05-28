@@ -27,10 +27,11 @@ def parse_signal_backup_from_zip(zip_path):
     self_real_name = "User" 
     
     with zipfile.ZipFile(zip_path, 'r') as z:
-        if 'main.jsonl' not in z.namelist():
+        jsonl_internal_path = next((name for name in z.namelist() if name.endswith('main.jsonl')), None)
+        if not jsonl_internal_path:
             return recipients, chat_to_recipient, chats, chat_meta, self_real_name
             
-        with z.open('main.jsonl', 'r') as f:
+        with z.open(jsonl_internal_path, 'r') as f:
             for line in f:
                 if not line.strip(): continue
                 try: data = json.loads(line.decode('utf-8'))

@@ -1,5 +1,5 @@
 import os
-import zipfile
+import time
 
 def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_real_name, disk_cache, tz_suffix):
     html_start = f"""<!DOCTYPE html>
@@ -71,9 +71,6 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
     sorted_chats = sorted(chats.items(), key=lambda x: (chat_meta.get(x[0], {'pinnedOrder': float('inf')})['pinnedOrder'], -len(x[1])))
     ext_map = {'image/jpeg': '.jpeg', 'image/jpg': '.jpg', 'image/png': '.png', 'video/mp4': '.mp4', 'text/plain': '.txt'}
 
-    # 取得原始壓縮檔路徑來執行隨選解壓
-    zip_path = args_file_placeholder = list(disk_cache.values())[0]['zip_internal_path'] if disk_cache else ""
-    
     for chat_id, messages in sorted_chats:
         if not messages: continue
         
@@ -151,22 +148,8 @@ def generate_html_output(recipients, chat_to_recipient, chats, chat_meta, self_r
                         
                         composite_key = (j_size, j_ext)
                         if j_size and j_ext and composite_key in disk_cache:
-                            meta_info = disk_cache[composite_key]
-                            internal_src = meta_info['zip_internal_path']
-                            out_dir = meta_info['target_dir']
-                            
-                            # 隨選即時解壓：僅將正確配對到的檔案寫入輸出資料夾中
-                            full_out_path = os.path.join(out_dir, internal_src)
-                            if not os.path.exists(full_out_path):
-                                os.makedirs(os.path.dirname(full_out_path), exist_ok=True)
-                                # 追溯最外層的真正 ZIP 檔案位置解壓
-                                import sys
-                                main_zip_file = sys.argv[sys.argv.index('-f') + 1]
-                                with zipfile.ZipFile(main_zip_file, 'r') as rn_z:
-                                    with rn_z.open(internal_src) as source_bytes, open(full_out_path, 'wb') as target_bytes:
-                                        target_bytes.write(source_bytes.read())
-                            
-                            content_area += f'<div class="img-container"><a href="{internal_src}" target="_blank"><img class="img-attach" src="{internal_src}"></a></div>'
+                            img_src = disk_cache[composite_key]
+                            content_area += f'<div class="img-container"><a href="{img_src}" target="_blank"><img class="img-attach" src="{img_src}"></a></div>'
                         else:
                             content_area += f'<div style="color:#707579; font-size:12px; font-style:italic;">[Media: {info.get("fileName", "Photo")}]</div>'
                 
