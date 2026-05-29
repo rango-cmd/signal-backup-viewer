@@ -1,6 +1,6 @@
 # Signal Backup Viewer
 
-A Python-based tool to convert raw encrypted Signal Desktop backup archives (```.zip```) into a human-readable local interactive webpage styled after Telegram Desktop.
+A Python-based tool to convert Signal Desktop Backup archives (```.zip```) into a human-readable local interactive webpage styled after Telegram Desktop.
 
 ## Features
 - Dual-Mode Operation: Offers both an advanced Command Line Interface (CLI) and a intuitive graphical interface (GUI) via.
