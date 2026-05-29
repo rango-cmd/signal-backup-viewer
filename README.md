@@ -1,6 +1,6 @@
 # Signal Backup Viewer
 
-A Python-based tool to convert Signal Desktop Backup archives (`.jsonl`) into a human-readable local interactive webpage.
+A Python-based tool to convert Signal Desktop Backup archives (`.zip`) into a human-readable local interactive webpage.
 
 ## Features
 - Dual-Mode Operation: Offers both an advanced Command Line Interface (CLI) and a intuitive graphical interface (GUI) via.
@@ -21,3 +21,15 @@ signal-backup-viewer/
     ├── cache.py            # ZIP inspection and composite asset mapping
     ├── parser.py           # Streamlined JSONL parsing and state management
     └── renderer.py         # Telegram DOM node serialization and HTML composition
+
+
+## Directory Structure of Signal Desktop Backup
+```text
+signal-export-YYYY-MM-DD-hh-mm-ss/
+├── metadata.json
+├── main.jsonl                  # All messages
+└── files/                      # Attachment
+    ├── 00/
+    │   ├── 000a8...68a4d.jpg
+    │   └── ...
+    └── ...
