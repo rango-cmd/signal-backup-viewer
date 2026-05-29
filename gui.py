@@ -31,8 +31,8 @@ def convert_signal_backup(zip_file, output_base_dir):
         return f"❌ 轉換失敗，錯誤回報：{str(e)}"
 
 with gr.Blocks(title="Signal Backup Viewer Converter") as demo:
-    gr.Markdown("# 💬 Signal 備份資料轉換器 (Telegram 風格)")
-    gr.Markdown("將 Signal 導出的加密 ZIP 壓縮包，一鍵轉換為具備雙欄導覽、左右氣泡分流的現代化網頁。")
+    gr.Markdown("# 💬 Signal 備份資料轉換器")
+    gr.Markdown("將 Signal 導出的加密 ZIP 壓縮包(`.jsonl`)，轉換為網頁瀏覽。")
     
     with gr.Row():
         with gr.Column():
