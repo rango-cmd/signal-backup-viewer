@@ -10,8 +10,13 @@ input/
 
 # Generated outputs
 output/
+
+# build artifacts
 build/
 dist/
 
 # MacOS system files
 .DS_Store
+
+# Test files
+*.spec
