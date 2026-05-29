@@ -9,7 +9,7 @@ A Python-based tool to convert Signal Desktop Backup archives (`.zip`) into a hu
 - Full Data Preservation: Automatically copies the pristine untouched `main.jsonl` backup dictionary into your target directory for raw archival reliability.
 
 ## Directory Structure
-```text
+```
 signal-backup-viewer/
 ├── .gitignore              # Environment and local backup exclusion rules
 ├── README.md               # Documentation guide
@@ -21,10 +21,10 @@ signal-backup-viewer/
     ├── cache.py            # ZIP inspection and composite asset mapping
     ├── parser.py           # Streamlined JSONL parsing and state management
     └── renderer.py         # Telegram DOM node serialization and HTML composition
-
+```
 
 ## Directory Structure of Signal Desktop Backup
-```text
+```
 signal-export-YYYY-MM-DD-hh-mm-ss/
 ├── metadata.json
 ├── main.jsonl                  # All messages
@@ -33,3 +33,4 @@ signal-export-YYYY-MM-DD-hh-mm-ss/
     │   ├── 000a8...68a4d.jpg
     │   └── ...
     └── ...
+```
